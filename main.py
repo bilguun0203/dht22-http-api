@@ -1,17 +1,24 @@
-import Adafruit_DHT
+import os
 import time
-import uvicorn
 from datetime import datetime
+
+import adafruit_dht
+import board
+import uvicorn
 from fastapi import FastAPI
+
+host = os.getenv("HOST", "127.0.0.1")
+port = os.getenv("PORT", 5000)
 
 app = FastAPI()
 
+dht22 = adafruit_dht.DHT22(board.D4, use_pulseio=False)
 
-def read_sensor():
-    dht22 = Adafruit_DHT.DHT22
+
+def measure():
     try:
-        humidity, temperature = Adafruit_DHT.read_retry(dht22, 4)
-        humidity = None if humidity > 100 else humidity
+        temperature = dht22.temperature
+        humidity = dht22.humidity
         if humidity is not None and temperature is not None:
             print(
                 datetime.now(),
@@ -26,10 +33,16 @@ def read_sensor():
 
 
 @app.get("/read")
-def dht22():
-    humid, temp = read_sensor()
+def read():
+    humid, temp = measure()
+    if humid is None or temp is None:
+        # if failed, try measure once more
+        time.sleep(1)
+        humid, temp = measure()
     return {"h": humid, "t": temp}
 
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=5000, log_level="info")
+    port = int(port)
+    print(f"Starting server on {host}:{port}. ")
+    uvicorn.run("main:app", host=host, port=port, log_level="info")
