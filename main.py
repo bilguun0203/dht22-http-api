@@ -12,13 +12,14 @@ port = os.getenv("PORT", 5000)
 
 app = FastAPI()
 
-dht22 = adafruit_dht.DHT22(board.D4, use_pulseio=False)
-
 
 def measure():
+    dht22 = None
     try:
+        dht22 = adafruit_dht.DHT22(board.D4, use_pulseio=True)
         temperature = dht22.temperature
         humidity = dht22.humidity
+        dht22.exit()
         if humidity is not None and temperature is not None:
             print(
                 datetime.now(),
@@ -29,6 +30,8 @@ def measure():
         return humidity, temperature
     except Exception as e:
         print(datetime.now(), f"Error: {e}")
+        if dht22 is not None:
+            dht22.exit()
     return None, None
 
 
