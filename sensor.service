@@ -1,0 +1,14 @@
+[Unit]
+Description=Sensor service
+
+[Service]
+User=pi
+Group=pi
+ExecStart=python main.py
+WorkingDirectory=/home/pi/sensor
+Environment="PATH=/home/pi/sensor/.venv/bin"
+RestartSec=1
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
