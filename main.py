@@ -1,11 +1,13 @@
 import os
 import time
 from datetime import datetime
+from functools import lru_cache
 
 import adafruit_dht
 import board
 import uvicorn
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI, Response
+from typing_extensions import Annotated
 
 host = os.getenv("HOST", "127.0.0.1")
 port = os.getenv("PORT", 5000)
@@ -13,13 +15,15 @@ port = os.getenv("PORT", 5000)
 app = FastAPI()
 
 
-def measure():
-    dht22 = None
+@lru_cache
+def get_dht22():
+    return adafruit_dht.DHT22(board.D4, use_pulseio=True)
+
+
+def measure(dht22):
     try:
-        dht22 = adafruit_dht.DHT22(board.D4, use_pulseio=True)
         temperature = dht22.temperature
         humidity = dht22.humidity
-        dht22.exit()
         if humidity is not None and temperature is not None:
             print(
                 datetime.now(),
@@ -30,18 +34,18 @@ def measure():
         return humidity, temperature
     except Exception as e:
         print(datetime.now(), f"Error: {e}")
-        if dht22 is not None:
-            dht22.exit()
     return None, None
 
 
 @app.get("/read")
-def read():
-    humid, temp = measure()
+def read(dht22: Annotated[adafruit_dht.DHT22, Depends(get_dht22)], response: Response):
+    humid, temp = measure(dht22)
     if humid is None or temp is None:
         # if failed, try measure once more
         time.sleep(1)
-        humid, temp = measure()
+        humid, temp = measure(dht22)
+    if humid is None or temp is None:
+        response.status_code = 500
     return {"h": humid, "t": temp}
 
 
