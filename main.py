@@ -1,7 +1,6 @@
 import os
 import time
 from datetime import datetime
-from functools import lru_cache
 
 import adafruit_dht
 import board
@@ -15,7 +14,6 @@ port = os.getenv("PORT", 5000)
 app = FastAPI()
 
 
-@lru_cache
 def get_dht22():
     return adafruit_dht.DHT22(board.D4, use_pulseio=True)
 
@@ -46,6 +44,7 @@ def read(dht22: Annotated[adafruit_dht.DHT22, Depends(get_dht22)], response: Res
         humid, temp = measure(dht22)
     if humid is None or temp is None:
         response.status_code = 500
+    dht22.exit()
     return {"h": humid, "t": temp}
 
 
@@ -53,3 +52,4 @@ if __name__ == "__main__":
     port = int(port)
     print(f"Starting server on {host}:{port}. ")
     uvicorn.run("main:app", host=host, port=port, log_level="info")
+
